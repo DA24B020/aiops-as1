@@ -1,0 +1,191 @@
+PART 1
+
+1.
+$ mlflow server --backend-store-uri sqlite:///mlflow.db \
+    --default-artifact-root s3://aiops-da24b019-da24b020/m1/mlflow-artifacts \
+    --host 0.0.0.0 --port 5000 --allowed-hosts "*" --cors-allowed-origins "*"
+
+2.
+$ export MLFLOW_TRACKING_URI=http://localhost:5000
+
+3.
+$ dvc init
+Initialized DVC repository.
+
+4.
+$ dvc remote add --default s3remote s3://aiops-da24b019-da24b020/m1/dvcstore
+Setting 's3remote' as a default remote.
+
+5.
+$ dvc remote modify s3remote region ap-south-1
+
+6.
+$ python src/prepare_data.py
+wrote data/iris.csv: 150 rows x 5 cols
+
+7.
+$ dvc add data/iris.csv
+100% Adding...|███████████████████████████████████████|1/1 [00:00,  4.88file/s]
+
+To track the changes with git, run:
+
+	git add data/iris.csv.dvc data/.gitignore
+
+8.
+$ dvc push
+Collecting                                           |1.00 [00:00, 66.4entry/s]
+Pushing
+1 file pushed
+
+9.
+$ pip freeze > requirements.txt
+
+10.
+$ git add src/ scripts/ requirements.txt environment.yml .gitignore \
+        .dvc/config .dvc/.gitignore .dvcignore \
+        data/iris.csv.dvc data/.gitignore
+
+11.
+$ git commit -m "[A] capstone: training code + DVC-versioned iris dataset, seed 42"
+[main ac32533] [A] capstone: training code + DVC-versioned iris dataset, seed 42
+ 9 files changed, 217 insertions(+), 3 deletions(-)
+ create mode 100644 data/.gitignore
+ create mode 100644 data/iris.csv.dvc
+ create mode 100644 scripts/log_repro_note.py
+ create mode 100644 scripts/promote.py
+ create mode 100644 src/prepare_data.py
+ create mode 100644 src/train.py
+
+12.
+$ git status --porcelain
+
+13.
+$ git rev-parse --short HEAD
+ac32533
+
+14.
+$ git push origin main
+To github-second:DA24B020/aiops-m1-da24b019-da24b020
+   4bec914..ac32533  main -> main
+
+15.
+$ python src/train.py --seed 42 --run_name partnerA-baseline \
+    --experiment m1-capstone-v2 --register_as m1-capstone-model
+Registered model 'm1-capstone-model' already exists. Creating a new version of this model...
+Created version '3' of model 'm1-capstone-model'.
+run_id             = 1bfc37a003f44677ac6921b414eeff99
+git_commit         = ac32533  dirty=false
+final_val_accuracy = 1.0000
+
+16.
+$ aws s3 ls s3://aiops-da24b019-da24b020/m1/mlflow-artifacts/ --recursive
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/MLmodel
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/conda.yaml
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/input_example.json
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/model.skops
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/python_env.yaml
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/requirements.txt
+m1/mlflow-artifacts/2/models/m-3a8d6a3ac8c046fc9ab5fec84ff3b050/artifacts/serving_input_example.json
+
+17.
+$ python scripts/promote.py --name m1-capstone-model --version 3 --stage Staging
+m1-capstone-model v3 -> Staging
+
+  v3  stage=Staging     run_id=1bfc37a0
+
+
+PART 2
+
+ Partner A shared exactly four items with Partner B and nothing else:
+
+   repository   https://github.com/DA24B020/aiops-m1-da24b019-da24b020
+   commit       ac32533
+   tracking URI http://192.168.0.115:5000
+   AWS keys     IAM user dvc-Dhanush (S3 read/write on the shared bucket only)
+
+ No information about the environment, dependencies or data was exchanged.
+
+
+PART 3
+
+18.
+$ aws sts get-caller-identity
+{
+    "UserId": "AIDAWA4UWWELA7523R6KV",
+    "Account": "414239338774",
+    "Arn": "arn:aws:iam::414239338774:user/dvc-Dhanush"
+}
+
+19.
+$ git clone https://github.com/DA24B020/aiops-m1-da24b019-da24b020.git
+
+20.
+$ cd aiops-m1-da24b019-da24b020
+
+21.
+$ git checkout ac32533
+HEAD is now at ac32533 [A] capstone: training code + DVC-versioned iris dataset, seed 42
+
+22.
+$ python3 -m venv .venv
+
+23.
+$ source .venv/bin/activate
+
+24.
+$ pip install -r requirements.txt
+
+25.
+$ dvc pull
+Collecting                                           |1.00 [00:00, 71.2entry/s]
+Fetching
+1 file fetched
+
+26.
+$ dvc checkout
+M       data/iris.csv
+
+27.
+$ md5sum data/iris.csv
+ac2c33e860a72a79bbc3437ca80c355c  data/iris.csv
+
+28.
+$ export MLFLOW_TRACKING_URI=http://192.168.0.115:5000
+
+29.
+$ python src/train.py --seed 42 --run_name partnerB-repro \
+    --experiment m1-capstone-v2
+run_id             = 47ff794fa3b949a1b13c3120545cf3ba
+git_commit         = ac32533  dirty=false
+final_val_accuracy = 1.0000
+
+
+PART 4
+
+ Tolerance of +/-0.005 on final_val_accuracy was declared before comparing.
+
+30.
+$ python scripts/log_repro_note.py \
+    --run_a 1bfc37a003f44677ac6921b414eeff99 \
+    --run_b 47ff794fa3b949a1b13c3120545cf3ba \
+    --tolerance 0.005
+Reproduction of run 1bfc37a0 (git_commit ac32533). Partner A
+final_val_accuracy=1.0000; Partner B final_val_accuracy=1.0000; |delta|=0.0000
+vs pre-declared tolerance +/-0.005. Verdict: MATCH.
+
+31.
+$ git add q4/evidence/
+
+32.
+$ git commit -m "[B] add reproduction transcript and pip resolution failure log"
+
+33.
+$ git push origin main
+
+34.
+$ git log --pretty=format:'%h %an %s'
+77f8ef3 Dhanush [B] add reproduction transcript and pip resolution failure log
+aa78b56 Raghav Iyengar [A] add Q4 evidence: run screenshots, registry state, repro note
+ac32533 Raghav Iyengar [A] capstone: training code + DVC-versioned iris dataset, seed 42
+29ce67c Raghav Iyengar [A] pin environment for reproducibility
+ffcc663 Raghav Iyengar chore: initialize git and dvc with S3 remote

@@ -1,0 +1,241 @@
+PART 1 - INITIALISE DVC AND PUSH v1                                  
+-------------------------------------------------------------------------------
+
+1.
+$ dvc init
+Initialized DVC repository.
+You can now commit the changes to git.
+
+2.
+$ dvc remote add --default s3remote s3://aiops-da24b019-da24b020/q3/dvcstore
+Setting 's3remote' as a default remote.
+
+3.
+$ dvc remote modify s3remote region ap-south-1
+
+4.
+$ git add .dvc .dvcignore .gitignore
+
+5.
+$ git commit -m "chore: init dvc with S3 remote for Q3"
+[main 7163560] chore: init dvc with S3 remote for Q3
+ 4 files changed, 14 insertions(+)
+ create mode 100644 .dvc/.gitignore
+ create mode 100644 .dvc/config
+ create mode 100644 .dvcignore
+ create mode 100644 .gitignore
+
+6.
+$ cat .dvc/config
+[core]
+    remote = s3remote
+['remote "s3remote"']
+    url = s3://aiops-da24b019-da24b020/q3/dvcstore
+    region = ap-south-1
+
+7.
+$ dvc get https://github.com/iterative/dataset-registry tutorials/versioning/data.zip
+
+8.
+$ ls -lh data.zip
+-rw-rw-r-- 1 raghav-iyengar raghav-iyengar 40M Aug 30 16:09 data.zip
+
+9.
+$ unzip -q data.zip && rm -f data.zip
+
+10.
+$ find data -type f | wc -l
+1800
+
+11.
+$ python q3/scripts/make_filelist.py --root data --out q3/filelist.csv
+wrote q3/filelist.csv: 1800 data rows (+1 header = 1801 lines)
+
+12.
+$ wc -l q3/filelist.csv
+1801 q3/filelist.csv
+
+13.
+$ dvc add q3/filelist.csv
+100% Adding...|███████████████████████████████████████|1/1 [00:00,  9.70file/s]
+
+To track the changes with git, run:
+
+	git add q3/.gitignore q3/filelist.csv.dvc
+
+14.
+$ cat q3/filelist.csv.dvc
+outs:
+- md5: 1cb5fc7e34e8c20bd951d18577866870
+  size: 93798
+  hash: md5
+  path: filelist.csv
+
+15.
+$ git add q3/filelist.csv.dvc q3/.gitignore q3/scripts/
+
+16.
+$ git commit -m "data: filelist v1 - 1800 rows from data.zip"
+[main e092ace] data: filelist v1 - 1800 rows from data.zip
+ 3 files changed, 27 insertions(+)
+ create mode 100644 q3/.gitignore
+ create mode 100644 q3/filelist.csv.dvc
+ create mode 100644 q3/scripts/make_filelist.py
+
+17.
+$ git tag -a v1 -m "filelist v1, 1800 rows"
+
+18.
+$ dvc push
+Collecting                                           |1.00 [00:00, 91.4entry/s]
+Pushing
+1 file pushed
+
+19.
+$ git push origin main --tags
+To github-second:DA24B020/aiops-as1.git
+   8a48fb5..e092ace  main -> main
+ * [new tag]         v1 -> v1
+
+
+PART 2 - DATA UPDATE TO v2                                           
+-------------------------------------------------------------------------------
+
+20.
+$ dvc get https://github.com/iterative/dataset-registry tutorials/versioning/new-labels.zip
+
+21.
+$ unzip -q new-labels.zip && rm -f new-labels.zip
+
+22.
+$ find data -type f | wc -l
+2800
+
+23.
+$ python q3/scripts/make_filelist.py --root data --out q3/filelist.csv
+wrote q3/filelist.csv: 2800 data rows (+1 header = 2801 lines)
+
+24.
+$ wc -l q3/filelist.csv
+2801 q3/filelist.csv
+
+25.
+$ dvc status
+q3/filelist.csv.dvc:
+	changed outs:
+		modified:           q3/filelist.csv
+
+26.
+$ dvc add q3/filelist.csv
+100% Adding...|███████████████████████████████████████|1/1 [00:00, 12.86file/s]
+
+27.
+$ git diff q3/filelist.csv.dvc
+diff --git a/q3/filelist.csv.dvc b/q3/filelist.csv.dvc
+index 66a53a7..f830904 100644
+--- a/q3/filelist.csv.dvc
++++ b/q3/filelist.csv.dvc
+@@ -1,5 +1,5 @@
+ outs:
+-- md5: 1cb5fc7e34e8c20bd951d18577866870
+-  size: 93798
++- md5: 56da1dbfeb097b12d441e0777ae1c5ac
++  size: 140802
+   hash: md5
+   path: filelist.csv
+
+28.
+$ git commit -am "data: filelist v2 - 2800 rows / 2801 lines after merging new-labels.zip"
+[main 2a51f07] data: filelist v2 - 2800 rows / 2801 lines after merging new-labels.zip
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+29.
+$ git tag -a v2 -m "filelist v2, 2800 rows"
+
+30.
+$ dvc push
+Collecting                                           |1.00 [00:00, 89.0entry/s]
+Pushing
+1 file pushed
+
+
+PART 3 - ROLLBACK TO v1                                             
+-------------------------------------------------------------------------------
+
+31.
+$ git checkout v1
+HEAD is now at e092ace data: filelist v1 - 1800 rows from data.zip
+
+32.
+$ wc -l q3/filelist.csv
+2801 q3/filelist.csv
+
+33.
+$ dvc status
+q3/filelist.csv.dvc:
+	changed outs:
+		modified:           q3/filelist.csv
+
+34.
+$ dvc checkout
+Building workspace index                             |2.00 [00:00, 40.3entry/s]
+Comparing indexes                                    |3.00 [00:00,  404entry/s]
+Applying changes                                     |1.00 [00:00,  28.5file/s]
+M       q3/filelist.csv
+
+35.
+$ wc -l q3/filelist.csv
+1801 q3/filelist.csv
+
+36.
+$ md5sum q3/filelist.csv
+1cb5fc7e34e8c20bd951d18577866870  q3/filelist.csv
+
+37.
+$ cat q3/filelist.csv.dvc
+outs:
+- md5: 1cb5fc7e34e8c20bd951d18577866870
+  size: 93798
+  hash: md5
+  path: filelist.csv
+
+38.
+$ dvc status
+Data and pipelines are up to date.
+
+39.
+$ git checkout main
+Switched to branch 'main'
+
+40.
+$ dvc checkout
+M       q3/filelist.csv
+
+41.
+$ wc -l q3/filelist.csv
+2801 q3/filelist.csv
+
+42.
+$ git push origin main --tags
+To github-second:DA24B020/aiops-as1.git
+   e092ace..b5b5639  main -> main
+ * [new tag]         v2 -> v2
+
+43.
+$ git ls-remote --tags origin
+342af0385c99316218866498beb94e5efd8b457a	refs/tags/v1
+e092acedec4c666c902b744337dfbefb23689a26	refs/tags/v1^{}
+5b95eaece891df91350a8251c68d8f55016aeb91	refs/tags/v2
+2a51f075e023e46b7fe789a64f72affb49ac1342	refs/tags/v2^{}
+
+
+===============================================================================
+ RESULT
+
+   v1   1800 rows / 1801 lines   md5 1cb5fc7e34e8c20bd951d18577866870
+   v2   2800 rows / 2801 lines   md5 56da1dbfeb097b12d441e0777ae1c5ac
+
+   Step 32:  after `git checkout v1` the file still had 2801 lines.
+   Step 35:  after `dvc checkout` it had 1801 lines.
+   Step 36:  md5 matched the hash recorded in the v1 pointer at step 37.
+===============================================================================
