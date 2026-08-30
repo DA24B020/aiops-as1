@@ -1,0 +1,42 @@
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ git checkout v1
+Note: switching to 'v1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at e092ace data: filelist v1 - 1800 rows from data.zip
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ wc -l q3/filelist.csv
+2801 q3/filelist.csv
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ dvc status
+q3/filelist.csv.dvc:                                                           
+	changed outs:
+		modified:           q3/filelist.csv
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ dvc checkout
+Building workspace index                             |2.00 [00:00, 40.3entry/s]
+Comparing indexes                                    |3.00 [00:00,  404entry/s]
+Applying changes                                     |1.00 [00:00,  28.5file/s]
+M       q3/filelist.csv
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ wc -l q3/filelist.csv
+1801 q3/filelist.csv
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ md5sum q3/filelist.csv
+1cb5fc7e34e8c20bd951d18577866870  q3/filelist.csv
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ cat q3/filelist.csv.dvc
+outs:
+- md5: 1cb5fc7e34e8c20bd951d18577866870
+  size: 93798
+  hash: md5
+  path: filelist.csv
+(.venv) raghav-iyengar@raghav-iyengar-VirtualBox:~/DA3408_DA24B020_1$ dvc status
+Data and pipelines are up to date.
